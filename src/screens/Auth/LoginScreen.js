@@ -1,4 +1,3 @@
-import { signInWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
 import { Alert, Button, TextInput, View } from 'react-native';
 import { auth } from '../../services/firebase';
@@ -9,8 +8,8 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigation.navigate('Tabs');
+      await auth().signInWithEmailAndPassword(email, password);
+      // Navigation will be handled by the auth state listener in App.js
     } catch (error) {
       Alert.alert('Login Error', error.message);
     }

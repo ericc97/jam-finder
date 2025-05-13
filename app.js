@@ -13,7 +13,7 @@ import ChatScreen from './src/screens/ChatScreen';
 
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -54,3 +54,5 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+export default App;

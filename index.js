@@ -1,4 +1,4 @@
-import 'react-native-gesture-handler';
+import 'react-native-gesture-handler'; 
 import { enableScreens } from 'react-native-screens';
 import React from 'react';
 import { AppRegistry } from 'react-native';

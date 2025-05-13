@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "JamFinder",
+  "name": "JamFinder",
     "slug": "jam-finder",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,13 +18,13 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.coleman.jamfinder"
     },
-    "android": {
+  "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.coleman.jamfinder"
-    },
+    "package": "com.coleman.jamfinder"
+  },
     "web": {
       "favicon": "./assets/favicon.png"
     }

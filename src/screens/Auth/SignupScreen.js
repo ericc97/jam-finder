@@ -1,7 +1,6 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
 import React, { useState } from 'react';
 import { Alert, Button, Text, TextInput, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { auth, db } from '../../services/firebase';
 
 export default function SignupScreen({ route, navigation }) {
   const { role } = route.params;
@@ -46,11 +45,11 @@ export default function SignupScreen({ route, navigation }) {
         email: email.trim(),
         role,
         publicId,
-        createdAt: firestore.FieldValue.serverTimestamp(),
+        createdAt: db.FieldValue.serverTimestamp(),
       };
       
       console.log('Creating Firestore profile with data:', userData);
-      await firestore().collection('users').doc(user.uid).set(userData);
+      await db().collection('users').doc(user.uid).set(userData);
       console.log('Firestore profile created successfully');
 
       // Let App.js redirect based on auth state
