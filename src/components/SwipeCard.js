@@ -35,7 +35,12 @@ export default function SwipeCard({ user }) {
 
   return (
     <View style={styles.card}>
-      <Image source={{ uri: user?.headerImages?.[0] }} style={styles.image} />
+      <Image
+        source={{
+          uri: user?.profileImage || user?.headerImages?.[0]
+        }}
+        style={styles.image}
+      />
       <Text style={styles.name}>{user.name}</Text>
       <Text>{user.genre}</Text>
       <Text numberOfLines={3}>{user.bio}</Text>

@@ -181,9 +181,26 @@ export default function ArtistProfileScreen() {
 
       <Text>Profile Picture</Text>
       <ImageUploader onUploaded={setProfileImage} />
+      {profileImage && (
+        <Image
+          source={{ uri: profileImage }}
+          style={{ width: 100, height: 100, borderRadius: 50 }}
+        />
+      )}
 
       <Text>Header Images (max 5)</Text>
       <ImageUploader onUploaded={addHeaderImage} />
+      {headerImages.length > 0 && (
+        <ScrollView horizontal>
+          {headerImages.map((uri, index) => (
+            <Image
+              key={index}
+              source={{ uri }}
+              style={{ width: 100, height: 100, marginRight: 10 }}
+            />
+          ))}
+        </ScrollView>
+      )}
 
       <Text>Upload MP3 (autoplay)</Text>
       <AudioUploader onUploaded={setAudioUrl} />
