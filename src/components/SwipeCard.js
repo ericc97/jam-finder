@@ -1,52 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Image, StyleSheet, Text, View, Alert, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Alert, TouchableOpacity } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import FastImage from 'react-native-fast-image';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SwipeCard({ user }) {
-  const [isFavorited, setIsFavorited] = useState(false);
   const [sound, setSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
-
-  useEffect(() => {
-    const checkFavorite = async () => {
-      const uid = auth().currentUser?.uid;
-      if (!uid || !user?.id) return;
-
-      const favDoc = await firestore().collection('favorites').doc(uid).get();
-      if (favDoc.exists && favDoc.data()[user.id]) {
-        setIsFavorited(true);
-      }
-    };
-
-    checkFavorite();
-  }, [user?.id]);
-
-  const toggleFavorite = async () => {
-    const uid = auth().currentUser?.uid;
-    const ref = firestore().collection('favorites').doc(uid);
-
-    if (isFavorited) {
-      await ref.update({ [user.id]: null });
-      setIsFavorited(false);
-    } else {
-      await ref.set({ [user.id]: true }, { merge: true });
-      setIsFavorited(true);
-
-      const otherUserFavDoc = await firestore().collection('favorites').doc(user.id).get();
-      if (otherUserFavDoc.exists && otherUserFavDoc.data()[uid]) {
-        const matchId = [uid, user.id].sort().join('_');
-        await firestore().collection('matches').doc(matchId).set({
-          users: [uid, user.id],
-          matchedAt: firestore.FieldValue.serverTimestamp(),
-        });
-
-        Alert.alert("🎉 It's a match!", `You and ${user.name} can now chat.`);
-      }
-    }
-  };
 
   const renderEquipmentInfo = () => {
     if (!user.equipment) return null;
@@ -105,6 +66,7 @@ export default function SwipeCard({ user }) {
           <Text style={styles.placeholderText}>No Image</Text>
         </View>
       )}
+
       <View style={styles.profileSection}>
         {user?.profileImage ? (
           <FastImage 
@@ -130,20 +92,12 @@ export default function SwipeCard({ user }) {
           <Text style={styles.name}>{user?.name || 'No Name'}</Text>
           <Text style={styles.genre}>{user?.genre || 'No Genre'}</Text>
         </View>
-        <TouchableOpacity 
-          style={[styles.favoriteButton, isFavorited && styles.favoritedButton]} 
-          onPress={toggleFavorite}
-        >
-          <Ionicons 
-            name={isFavorited ? "heart" : "heart-outline"} 
-            size={24} 
-            color={isFavorited ? "#fff" : "#00adf5"} 
-          />
-        </TouchableOpacity>
       </View>
+
       <View style={styles.bioContainer}>
         <Text style={styles.bio} numberOfLines={3}>{user?.bio || 'No Bio'}</Text>
       </View>
+
       {user.role === 'venue' && (
         <>
           {user.address && (
@@ -238,21 +192,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#444',
     lineHeight: 22,
-  },
-  favoriteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#00adf5',
-    marginLeft: 10,
-  },
-  favoritedButton: {
-    backgroundColor: '#00adf5',
-    borderColor: '#00adf5',
   },
   equipmentContainer: {
     marginTop: 12,
