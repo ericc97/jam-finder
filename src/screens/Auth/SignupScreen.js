@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
-import { Alert, Button, Text, TextInput, View, ActivityIndicator, StyleSheet } from 'react-native';
-import { auth, db } from '../../services/firebase';
+import { 
+  Alert, 
+  Text, 
+  TextInput, 
+  View, 
+  ActivityIndicator, 
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView
+} from 'react-native';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SignupScreen({ route, navigation }) {
   const { role } = route.params;
@@ -32,118 +45,185 @@ export default function SignupScreen({ route, navigation }) {
 
     setIsLoading(true);
     try {
-      console.log('Starting signup process...');
-      
-      // Create auth user
-      const userCredential = await auth().createUserWithEmailAndPassword(email.trim(), password);
+      const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
-      console.log('Auth user created:', user.uid);
-
-      // Create Firestore profile
       const publicId = user.uid.slice(0, 8);
-      const userData = {
-        email: email.trim(),
-        role,
-        publicId,
-        createdAt: db.FieldValue.serverTimestamp(),
-      };
-      
-      console.log('Creating Firestore profile with data:', userData);
-      await db().collection('users').doc(user.uid).set(userData);
-      console.log('Firestore profile created successfully');
 
-      // Let App.js redirect based on auth state
+      // Create user document in Firestore with all necessary fields
+      await firestore().collection('users').doc(user.uid).set({
+        email: user.email,
+        role: role,
+        name: '',
+        bio: '',
+        genre: '',
+        audioUrl: '',
+        profileImage: '',
+        headerImages: [],
+        publicId: publicId,
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        profileUpdatedAt: firestore.FieldValue.serverTimestamp(),
+        // Add venue-specific fields if role is venue
+        ...(role === 'venue' && {
+          address: '',
+          capacity: '',
+          venueType: '',
+          equipment: {
+            availableToUse: false,
+            availableToRent: false,
+            notIncluded: false,
+            details: ''
+          }
+        })
+      });
+
+      // Navigate to the appropriate profile screen
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Tabs' }],
+      });
     } catch (error) {
-      console.error('Signup error:', error);
-      
-      // Handle specific Firebase auth errors
-      let errorMessage = 'An error occurred during signup';
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          errorMessage = 'This email is already registered. Please login instead.';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Please enter a valid email address.';
-          break;
-        case 'auth/operation-not-allowed':
-          errorMessage = 'Email/password accounts are not enabled. Please contact support.';
-          break;
-        case 'auth/weak-password':
-          errorMessage = 'Please choose a stronger password.';
-          break;
-        case 'auth/network-request-failed':
-          errorMessage = 'Network error. Please check your internet connection and try again.';
-          break;
-        default:
-          errorMessage = error.message;
-      }
-      
-      Alert.alert('Signup Error', errorMessage);
+      Alert.alert('Error', error.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Signup as {role}</Text>
-      
-      <TextInput 
-        style={styles.input}
-        placeholder="Email" 
-        value={email} 
-        onChangeText={setEmail} 
-        autoCapitalize="none"
-        keyboardType="email-address"
-        editable={!isLoading}
-      />
-      
-      <TextInput 
-        style={styles.input}
-        placeholder="Password" 
-        value={password} 
-        onChangeText={setPassword} 
-        secureTextEntry 
-        editable={!isLoading}
-      />
-      
-      <Button 
-        title={isLoading ? "Signing up..." : "Sign Up"} 
-        onPress={handleSignup}
-        disabled={isLoading}
-      />
-      
-      {isLoading && <ActivityIndicator style={styles.loader} />}
-      
-      <Button 
-        title="Already have an account? Login" 
-        onPress={() => navigation.navigate('Login')}
-        disabled={isLoading}
-      />
-    </View>
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+
+        <Text style={styles.title}>Sign up as {role}</Text>
+        
+        <View style={styles.form}>
+          <TextInput 
+            style={styles.input}
+            placeholder="Email" 
+            value={email} 
+            onChangeText={setEmail} 
+            autoCapitalize="none"
+            keyboardType="email-address"
+            editable={!isLoading}
+            placeholderTextColor="#999"
+          />
+          
+          <TextInput 
+            style={styles.input}
+            placeholder="Password" 
+            value={password} 
+            onChangeText={setPassword} 
+            secureTextEntry 
+            editable={!isLoading}
+            placeholderTextColor="#999"
+          />
+          
+          <TouchableOpacity 
+            style={[styles.signupButton, isLoading && styles.disabledButton]}
+            onPress={handleSignup}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.signupButtonText}>Sign Up</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.loginButton}
+          onPress={() => navigation.navigate('Login')}
+          disabled={isLoading}
+        >
+          <Text style={styles.loginButtonText}>Already have an account? Login</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
-    justifyContent: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 1,
+    padding: 10,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 20,
     textAlign: 'center',
+    marginTop: 60,
+    marginBottom: 40,
+    color: '#333',
+  },
+  form: {
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 15,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3.84,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
+    borderColor: '#e1e1e1',
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 15,
+    fontSize: 16,
+    backgroundColor: '#fff',
   },
-  loader: {
+  signupButton: {
+    backgroundColor: '#00adf5',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
     marginTop: 10,
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  signupButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  loginButton: {
+    padding: 15,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  loginButtonText: {
+    color: '#00adf5',
+    fontSize: 16,
   },
 });

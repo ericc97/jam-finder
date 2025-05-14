@@ -9,13 +9,20 @@ import {
     TextInput,
     View,
     ActivityIndicator,
-    Image,
+    StyleSheet,
+    Dimensions,
+    TouchableOpacity,
 } from 'react-native';
 import AudioUploader from '../components/AudioUploader';
 import ImageUploader from '../components/ImageUploader';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import FastImage from 'react-native-fast-image';
+import { Ionicons } from '@expo/vector-icons';
+
+const { width } = Dimensions.get('window');
+const HEADER_HEIGHT = 200;
+const PROFILE_IMAGE_SIZE = 120;
 
 export default function ArtistProfileScreen() {
   const [name, setName] = useState('');
@@ -132,6 +139,7 @@ export default function ArtistProfileScreen() {
       console.log('Starting to save profile...');
       console.log('Current user:', auth().currentUser?.uid);
       console.log('Profile uid:', uid);
+      console.log('Current audioUrl state:', audioUrl);
       
       const publicId = uid.slice(0, 8);
       const profileData = {
@@ -140,13 +148,13 @@ export default function ArtistProfileScreen() {
         genre: genre.trim(),
         profileImage,
         headerImages,
-        audioUrl,
+        audioUrl: audioUrl || '', // Ensure audioUrl is never undefined
         publicId,
         role: 'artist',
         profileUpdatedAt: firestore.FieldValue.serverTimestamp(),
       };
       
-      console.log('Saving profile data:', profileData);
+      console.log('Saving profile data:', JSON.stringify(profileData, null, 2));
       docRef = firestore().collection('users').doc(uid);
       console.log('Document reference created for path:', docRef.path);
       
@@ -157,7 +165,7 @@ export default function ArtistProfileScreen() {
       );
 
       await Promise.race([savePromise, timeoutPromise]);
-      console.log('Profile saved successfully');
+      console.log('Profile saved successfully with audioUrl:', profileData.audioUrl);
 
       // Reset saving state before showing alert
       setIsSaving(false);
@@ -240,136 +248,272 @@ export default function ArtistProfileScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00adf5" />
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16 }}>
-      <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 10 }}>
-        Edit Artist Profile
-      </Text>
+    <ScrollView style={styles.container} bounces={false}>
+      <View style={styles.headerContainer}>
+        {headerImages[0] ? (
+          <FastImage 
+            source={{ uri: headerImages[0] }}
+            style={styles.headerImage}
+            resizeMode={FastImage.resizeMode.cover}
+          />
+        ) : (
+          <View style={styles.headerPlaceholder}>
+            <Ionicons name="image" size={40} color="#fff" />
+            <Text style={styles.headerPlaceholderText}>Add Header Image</Text>
+          </View>
+        )}
+        <View style={styles.profileImageContainer}>
+          {profileImage ? (
+            <FastImage 
+              source={{ uri: profileImage }}
+              style={styles.profileImage}
+              resizeMode={FastImage.resizeMode.cover}
+            />
+          ) : (
+            <View style={[styles.profileImage, styles.profileImagePlaceholder]}>
+              <Ionicons name="person" size={40} color="#fff" />
+            </View>
+          )}
+        </View>
+        <View style={styles.imageUploadButtons}>
+          <TouchableOpacity 
+            style={styles.imageUploadButton}
+            onPress={() => {
+              // Trigger header image upload
+              const uploader = document.createElement('input');
+              uploader.type = 'file';
+              uploader.accept = 'image/*';
+              uploader.click();
+            }}
+          >
+            <Ionicons name="camera" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.imageUploadButton, { marginLeft: 10 }]}
+            onPress={() => {
+              // Trigger profile image upload
+              const uploader = document.createElement('input');
+              uploader.type = 'file';
+              uploader.accept = 'image/*';
+              uploader.click();
+            }}
+          >
+            <Ionicons name="camera" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      <Text>Profile Picture</Text>
-      {profileImage ? (
-        <View style={{ alignItems: 'center' }}>
-          <Image 
-            source={{ uri: profileImage }} 
-            style={{ 
-              width: 100, 
-              height: 100, 
-              borderRadius: 50,
-              marginBottom: 10,
-            }}
-            onError={(error) => {
-              console.error('Error loading profile image:', error.nativeEvent);
-              console.log('Failed URL:', profileImage);
-            }}
-            onLoad={() => {
-              console.log('Profile image loaded successfully');
-            }}
+      <View style={styles.contentContainer}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Name</Text>
+          <TextInput 
+            value={name} 
+            onChangeText={setName} 
+            style={styles.input}
+            placeholder="Enter your name"
+            editable={!isSaving}
           />
         </View>
-      ) : (
-        <View style={{ 
-          width: 100, 
-          height: 100, 
-          borderRadius: 50,
-          backgroundColor: '#e0e0e0',
-          marginBottom: 10,
-          alignSelf: 'center',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          <Text style={{ color: '#666' }}>No Photo</Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Genre</Text>
+          <TextInput 
+            value={genre} 
+            onChangeText={setGenre} 
+            style={styles.input}
+            placeholder="Enter your genre"
+            editable={!isSaving}
+          />
         </View>
-      )}
-      <ImageUploader onUploaded={setProfileImage} disabled={isSaving} />
 
-      <Text>Name</Text>
-      <TextInput 
-        value={name} 
-        onChangeText={setName} 
-        style={{ borderWidth: 1, padding: 8, marginBottom: 8, borderRadius: 4 }} 
-        placeholder="Enter your name"
-        editable={!isSaving}
-      />
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Bio</Text>
+          <TextInput 
+            value={bio} 
+            onChangeText={setBio} 
+            multiline 
+            style={[styles.input, styles.bioInput]}
+            placeholder="Tell us about yourself"
+            editable={!isSaving}
+          />
+        </View>
 
-      <Text>Bio</Text>
-      <TextInput 
-        value={bio} 
-        onChangeText={setBio} 
-        multiline 
-        style={{ borderWidth: 1, padding: 8, marginBottom: 8, borderRadius: 4, minHeight: 100 }} 
-        placeholder="Tell us about yourself"
-        editable={!isSaving}
-      />
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Demo Track</Text>
+          <AudioUploader onUploaded={setAudioUrl} disabled={isSaving} />
+        </View>
 
-      <Text>Genre</Text>
-      <TextInput 
-        value={genre} 
-        onChangeText={setGenre} 
-        style={{ borderWidth: 1, padding: 8, marginBottom: 8, borderRadius: 4 }} 
-        placeholder="Enter your genre"
-        editable={!isSaving}
-      />
-
-      <Text>Header Images (max 5)</Text>
-      {headerImages.length > 0 && (
-        <ScrollView horizontal style={{ marginBottom: 10 }}>
-          {headerImages.map((url, index) => (
-            <Image 
-              key={index}
-              source={{ uri: url }} 
-              style={{ 
-                width: 100, 
-                height: 100, 
-                marginRight: 10,
-                borderRadius: 10
-              }} 
-            />
-          ))}
-        </ScrollView>
-      )}
-      <ImageUploader onUploaded={addHeaderImage} disabled={isSaving} />
-
-      <Text>Upload MP3 (autoplay)</Text>
-      <AudioUploader onUploaded={setAudioUrl} disabled={isSaving} />
-
-      <Button 
-        title={isSaving ? "Saving..." : "Save Profile"} 
-        onPress={saveProfile}
-        disabled={isSaving}
-        style={{ opacity: isSaving ? 0.5 : 1 }}
-      />
-
-      <View style={{ marginVertical: 10 }}>
-        <Button 
-          title="Share Public Profile" 
-          onPress={sharePublicProfile}
+        <TouchableOpacity 
+          style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
+          onPress={saveProfile}
           disabled={isSaving}
-        />
-      </View>
+        >
+          <Text style={styles.saveButtonText}>
+            {isSaving ? "Saving..." : "Save Profile"}
+          </Text>
+        </TouchableOpacity>
 
-      <View style={{ marginVertical: 10 }}>
-        <Button
-          title="Sign Out"
+        <View style={{ marginVertical: 10 }}>
+          <Button 
+            title="Share Public Profile" 
+            onPress={sharePublicProfile}
+            disabled={isSaving}
+          />
+        </View>
+
+        <TouchableOpacity 
+          style={styles.signOutButton}
           onPress={handleSignOut}
-          color="#666"
-          disabled={isSaving}
-        />
-      </View>
+        >
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </TouchableOpacity>
 
-      <View style={{ marginVertical: 10 }}>
-        <Button
-          title="Delete My Account"
-          onPress={deleteMyAccount}
-          color="red"
-          disabled={isSaving}
-        />
+        <View style={{ marginVertical: 10 }}>
+          <Button
+            title="Delete My Account"
+            onPress={deleteMyAccount}
+            color="red"
+            disabled={isSaving}
+          />
+        </View>
       </View>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  headerContainer: {
+    height: HEADER_HEIGHT,
+    position: 'relative',
+  },
+  headerImage: {
+    width: '100%',
+    height: HEADER_HEIGHT,
+  },
+  headerPlaceholder: {
+    width: '100%',
+    height: HEADER_HEIGHT,
+    backgroundColor: '#00adf5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerPlaceholderText: {
+    color: '#fff',
+    fontSize: 16,
+    marginTop: 8,
+  },
+  profileImageContainer: {
+    position: 'absolute',
+    bottom: -PROFILE_IMAGE_SIZE / 2,
+    left: (width - PROFILE_IMAGE_SIZE) / 2,
+    width: PROFILE_IMAGE_SIZE,
+    height: PROFILE_IMAGE_SIZE,
+    borderRadius: PROFILE_IMAGE_SIZE / 2,
+    backgroundColor: '#fff',
+    borderWidth: 4,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  profileImagePlaceholder: {
+    backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageUploadButtons: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    flexDirection: 'row',
+  },
+  imageUploadButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contentContainer: {
+    marginTop: PROFILE_IMAGE_SIZE / 2,
+    padding: 16,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  bioInput: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  saveButton: {
+    backgroundColor: '#00adf5',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  signOutButton: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#ff3b30',
+  },
+  signOutButtonText: {
+    color: '#ff3b30',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

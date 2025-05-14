@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Text, View, ActivityIndicator } from 'react-native';
+import { Alert, Text, View, ActivityIndicator, StyleSheet, SafeAreaView } from 'react-native';
 import Swiper from 'react-native-deck-swiper';
 import SwipeCard from '../components/SwipeCard';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function SwipeScreen() {
   const [cards, setCards] = useState([]);
@@ -105,8 +106,8 @@ export default function SwipeScreen() {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00adf5" />
       </View>
     );
   }
@@ -114,21 +115,145 @@ export default function SwipeScreen() {
   if (!cards.length) {
     const message = currentUserRole === 'artist' ? 'No venues to show' : 'No artists to show';
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>{message}</Text>
-      </View>
+      <SafeAreaView style={styles.emptyContainer}>
+        <Ionicons name="musical-notes" size={64} color="#00adf5" />
+        <Text style={styles.emptyText}>{message}</Text>
+        <Text style={styles.emptySubtext}>Check back later for new profiles</Text>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <Swiper
-        cards={cards}
-        renderCard={(card) => <SwipeCard user={card} />}
-        onSwipedRight={handleSwipeRight}
-        stackSize={3}
-        backgroundColor="transparent"
-      />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>
+          {currentUserRole === 'artist' ? 'Find Venues' : 'Find Artists'}
+        </Text>
+        <Text style={styles.headerSubtitle}>
+          Swipe right to favorite, left to skip
+        </Text>
+      </View>
+      <View style={styles.swiperContainer}>
+        <Swiper
+          cards={cards}
+          renderCard={(card) => <SwipeCard user={card} />}
+          onSwipedRight={handleSwipeRight}
+          stackSize={3}
+          backgroundColor="transparent"
+          cardStyle={styles.swiperCard}
+          containerStyle={styles.swiperContainerStyle}
+          cardIndex={0}
+          animateOverlayLabelsOpacity
+          overlayLabels={{
+            left: {
+              title: 'SKIP',
+              style: {
+                label: {
+                  textAlign: 'right',
+                  color: '#ff3b30',
+                  fontSize: 24,
+                  fontWeight: 'bold',
+                },
+                wrapper: {
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  justifyContent: 'flex-start',
+                  marginTop: 30,
+                  marginLeft: -30,
+                },
+              },
+            },
+            right: {
+              title: 'FAVORITE',
+              style: {
+                label: {
+                  textAlign: 'left',
+                  color: '#00adf5',
+                  fontSize: 24,
+                  fontWeight: 'bold',
+                },
+                wrapper: {
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-start',
+                  marginTop: 30,
+                  marginLeft: 30,
+                },
+              },
+            },
+          }}
+        />
+      </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  emptySubtext: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  header: {
+    padding: 16,
+    paddingTop: 8,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#666',
+  },
+  swiperContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  swiperContainerStyle: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  swiperCard: {
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+  },
+});
