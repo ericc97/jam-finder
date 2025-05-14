@@ -1,12 +1,5 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRoute } from '@react-navigation/native';
-import {
-    addDoc,
-    collection,
-    onSnapshot,
-    orderBy,
-    query
-} from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
     Button,
@@ -16,10 +9,12 @@ import {
     Platform,
     Text,
     TextInput,
-    View
+    View,
+    StyleSheet
 } from 'react-native';
 import MessageBubble from '../components/chat/MessageBubble';
-import { auth, db } from '../services/firebase';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
 export default function ChatScreen() {
   const route = useRoute();
@@ -31,42 +26,64 @@ export default function ChatScreen() {
   const [tempDate, setTempDate] = useState(new Date());
 
   useEffect(() => {
-    const q = query(
-      collection(db, `matches/${matchId}/chat`),
-      orderBy('timestamp', 'asc')
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    const unsubscribe = firestore()
+      .collection('matches')
+      .doc(matchId)
+      .collection('messages')
+      .orderBy('timestamp', 'asc')
+      .onSnapshot(snapshot => {
+        const messageList = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setMessages(messageList);
+      });
 
-    return unsubscribe;
+    return () => unsubscribe();
   }, [matchId]);
 
   const sendMessage = async () => {
     if (!text.trim()) return;
-    await addDoc(collection(db, `matches/${matchId}/chat`), {
-      senderId: auth.currentUser.uid,
-      text,
-      type: 'text',
-      timestamp: new Date(),
-    });
-    setText('');
+
+    try {
+      await firestore()
+        .collection('matches')
+        .doc(matchId)
+        .collection('messages')
+        .add({
+          text: text.trim(),
+          senderId: auth().currentUser.uid,
+          timestamp: firestore.FieldValue.serverTimestamp(),
+        });
+      
+      setText('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
   };
 
   const sendDateRequest = async (date) => {
     const formatted = date.toDateString();
-    await addDoc(collection(db, `matches/${matchId}/chat`), {
-      senderId: auth.currentUser.uid,
-      type: 'date_request',
-      text: formatted,
-      timestamp: new Date(),
-    });
-    setShowDateModal(false);
+    try {
+      await firestore()
+        .collection('matches')
+        .doc(matchId)
+        .collection('messages')
+        .add({
+          type: 'date_request',
+          text: formatted,
+          senderId: auth().currentUser.uid,
+          timestamp: firestore.FieldValue.serverTimestamp(),
+        });
+      setShowDateModal(false);
+    } catch (error) {
+      console.error('Error sending date request:', error);
+    }
   };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
@@ -74,36 +91,39 @@ export default function ChatScreen() {
         data={messages}
         renderItem={({ item }) =>
           item.type === 'date_request' ? (
-            <View style={{ margin: 10, padding: 12, backgroundColor: '#eef', borderRadius: 8 }}>
-              <Text style={{ fontWeight: 'bold' }}>📅 Date Requested:</Text>
+            <View style={styles.dateRequestContainer}>
+              <Text style={styles.dateRequestTitle}>📅 Date Requested:</Text>
               <Text>{item.text}</Text>
             </View>
           ) : (
-            <MessageBubble text={item.text} isMe={item.senderId === auth.currentUser.uid} />
+            <MessageBubble 
+              text={item.text} 
+              isMe={item.senderId === auth().currentUser.uid} 
+            />
           )
         }
         keyExtractor={item => item.id}
       />
 
-      <View style={{ flexDirection: 'row', padding: 8 }}>
+      <View style={styles.inputContainer}>
         <TextInput
           value={text}
           onChangeText={setText}
           placeholder="Type a message..."
-          style={{ flex: 1, borderWidth: 1, padding: 8, borderRadius: 8 }}
+          style={styles.input}
+          multiline
         />
         <Button title="Send" onPress={sendMessage} />
       </View>
 
-      <View style={{ paddingHorizontal: 8, marginBottom: 8 }}>
+      <View style={styles.dateRequestButtonContainer}>
         <Button title="📅 Request a Date" onPress={() => setShowDateModal(true)} />
       </View>
 
-      {/* Date picker modal */}
       <Modal visible={showDateModal} transparent animationType="slide">
-        <View style={{ flex: 1, justifyContent: 'center', backgroundColor: '#000000aa' }}>
-          <View style={{ backgroundColor: '#fff', padding: 20, margin: 20, borderRadius: 10 }}>
-            <Text style={{ marginBottom: 10 }}>Select a date to request</Text>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select a date to request</Text>
             <DateTimePicker
               mode="date"
               display="calendar"
@@ -114,7 +134,7 @@ export default function ChatScreen() {
                 }
               }}
             />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
+            <View style={styles.modalButtons}>
               <Button title="Cancel" onPress={() => setShowDateModal(false)} />
               <Button title="Request" onPress={() => sendDateRequest(tempDate)} />
             </View>
@@ -124,3 +144,61 @@ export default function ChatScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    backgroundColor: '#fff',
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 8,
+    marginRight: 8,
+    maxHeight: 100,
+  },
+  dateRequestButtonContainer: {
+    paddingHorizontal: 8,
+    marginBottom: 8,
+  },
+  dateRequestContainer: {
+    margin: 10,
+    padding: 12,
+    backgroundColor: '#eef',
+    borderRadius: 8,
+  },
+  dateRequestTitle: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: '#000000aa',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    margin: 20,
+    borderRadius: 10,
+  },
+  modalTitle: {
+    marginBottom: 10,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+  },
+});

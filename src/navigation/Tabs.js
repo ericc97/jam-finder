@@ -53,7 +53,7 @@ export default function Tabs() {
     >
       <Tab.Screen name="Swipe" component={SwipeScreen} />
       <Tab.Screen name="Matches" component={MatchesScreen} />
-      <Tab.Screen name="Favorites" component={FavoritesScreen} />
+      {/* <Tab.Screen name="Favorites" component={FavoritesScreen} /> */}
       <Tab.Screen name="Profile" component={ArtistProfileScreen} />
     </Tab.Navigator>
     </SafeAreaView>
