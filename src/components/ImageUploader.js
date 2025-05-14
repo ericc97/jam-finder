@@ -135,14 +135,10 @@ export default function ImageUploader({ onUploaded, disabled }) {
         // Get download URL
         console.log('Getting download URL...');
         const downloadURL = await reference.getDownloadURL();
-        console.log('Raw download URL from Firebase:', downloadURL);
+        console.log('Download URL from Firebase:', downloadURL);
         
-        // Fix the URL format
-        const fixedURL = downloadURL.replace('firebasestorage.app', 'appspot.com');
-        console.log('Fixed URL:', fixedURL);
-        
-        setImageUri(fixedURL);
-        onUploaded(fixedURL);
+        setImageUri(downloadURL);
+        onUploaded(downloadURL);
       }
     } catch (error) {
       console.error('Error in pickImage:', error);
