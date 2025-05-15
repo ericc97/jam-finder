@@ -11,12 +11,14 @@ export default function SwipeScreen() {
   const [currentUserRole, setCurrentUserRole] = useState(null);
   const [userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [allCardsSwiped, setAllCardsSwiped] = useState(false);
 
   useEffect(() => {
     // Listen for auth state changes
     const unsubscribe = auth().onAuthStateChanged(async (user) => {
       if (user) {
         try {
+          console.log('Loading profiles for user:', user.uid);
           // Get current user's role
           const userDoc = await firestore().collection('users').doc(user.uid).get();
           
@@ -26,6 +28,7 @@ export default function SwipeScreen() {
           }
 
           const data = userDoc.data();
+          console.log('User role:', data.role);
           setUserData(data);
           setCurrentUserRole(data.role);
           
@@ -46,8 +49,12 @@ export default function SwipeScreen() {
             });
           });
 
+          console.log('Matched user IDs:', Array.from(matchedUserIds));
+
           // Get all users with the opposite role, excluding matched users
           const oppositeRole = data.role === 'artist' ? 'venue' : 'artist';
+          console.log('Looking for users with role:', oppositeRole);
+          
           const querySnapshot = await firestore()
             .collection('users')
             .where('role', '==', oppositeRole)
@@ -61,6 +68,7 @@ export default function SwipeScreen() {
             );
 
           console.log(`Found ${allUsers.length} ${oppositeRole}s to show`);
+          console.log('Setting cards:', allUsers);
           setCards(allUsers);
         } catch (error) {
           console.error('Error loading profiles:', error);
@@ -95,12 +103,24 @@ export default function SwipeScreen() {
 
         // Remove the matched user from the cards array
         setCards(prevCards => prevCards.filter(card => card.id !== swipedUser.id));
+        
+        // Check if this was the last card
+        if (cards.length === 1) {
+          setAllCardsSwiped(true);
+        }
 
         Alert.alert("🎉 It's a match!", `You and ${swipedUser.name} can now chat.`);
       }
     } catch (error) {
       console.error('Error handling swipe right:', error);
       Alert.alert('Error', 'Failed to process swipe');
+    }
+  };
+
+  const handleSwipeLeft = (cardIndex) => {
+    // Check if this was the last card
+    if (cards.length === 1) {
+      setAllCardsSwiped(true);
     }
   };
 
@@ -112,17 +132,33 @@ export default function SwipeScreen() {
     );
   }
 
-  if (!cards.length) {
+  console.log('Current state:', { 
+    cardsLength: cards?.length, 
+    currentUserRole, 
+    isLoading 
+  });
+
+  // Show empty state if no cards or all cards have been swiped
+  if (!cards || cards.length === 0 || allCardsSwiped) {
+    console.log('Showing empty state');
     const message = currentUserRole === 'artist' ? 'No venues to show' : 'No artists to show';
     return (
       <SafeAreaView style={styles.emptyContainer}>
-        <Ionicons name="musical-notes" size={64} color="#00adf5" />
-        <Text style={styles.emptyText}>{message}</Text>
-        <Text style={styles.emptySubtext}>Check back later for new profiles</Text>
+        <View style={styles.emptyContent}>
+          <Ionicons name="musical-notes" size={80} color="#00adf5" />
+          <Text style={styles.emptyText}>{message}</Text>
+          <Text style={styles.emptySubtext}>We've shown you all available profiles for now.</Text>
+          <Text style={styles.emptySubtext}>Check back later for new matches!</Text>
+          <View style={styles.emptyDivider} />
+          <Text style={styles.emptyTip}>
+            Tip: Complete your profile to increase your chances of finding matches
+          </Text>
+        </View>
       </SafeAreaView>
     );
   }
 
+  console.log('Rendering swiper with cards:', cards.length);
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -138,6 +174,7 @@ export default function SwipeScreen() {
           cards={cards}
           renderCard={(card) => <SwipeCard user={card} />}
           onSwipedRight={handleSwipeRight}
+          onSwipedLeft={handleSwipeLeft}
           stackSize={3}
           backgroundColor="transparent"
           cardStyle={styles.swiperCard}
@@ -201,22 +238,40 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
+    backgroundColor: '#f8f9fa',
+  },
+  emptyContent: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
     padding: 20,
   },
   emptyText: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#333',
-    marginTop: 20,
-    marginBottom: 10,
+    marginTop: 24,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyDivider: {
+    width: '80%',
+    height: 1,
+    backgroundColor: '#e0e0e0',
+    marginVertical: 24,
+  },
+  emptyTip: {
+    fontSize: 14,
+    color: '#00adf5',
+    textAlign: 'center',
+    fontStyle: 'italic',
+    paddingHorizontal: 20,
   },
   header: {
     padding: 16,

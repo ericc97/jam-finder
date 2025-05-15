@@ -30,6 +30,7 @@ export default function ArtistProfileScreen() {
   const [genre, setGenre] = useState('');
   const [profileImage, setProfileImage] = useState('');
   const [headerImages, setHeaderImages] = useState([]);
+  const [currentHeaderIndex, setCurrentHeaderIndex] = useState(0);
   const [audioUrl, setAudioUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -246,6 +247,22 @@ export default function ArtistProfileScreen() {
     }
   };
 
+  const handleNextImage = () => {
+    if (headerImages.length > 0) {
+      setCurrentHeaderIndex((prevIndex) => 
+        prevIndex === headerImages.length - 1 ? 0 : prevIndex + 1
+      );
+    }
+  };
+
+  const handlePrevImage = () => {
+    if (headerImages.length > 0) {
+      setCurrentHeaderIndex((prevIndex) => 
+        prevIndex === 0 ? headerImages.length - 1 : prevIndex - 1
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -257,57 +274,36 @@ export default function ArtistProfileScreen() {
   return (
     <ScrollView style={styles.container} bounces={false}>
       <View style={styles.headerContainer}>
-        {headerImages[0] ? (
-          <FastImage 
-            source={{ uri: headerImages[0] }}
-            style={styles.headerImage}
-            resizeMode={FastImage.resizeMode.cover}
-          />
+        {headerImages.length > 0 ? (
+          <View style={styles.headerImageWrapper}>
+            <FastImage 
+              source={{ uri: headerImages[currentHeaderIndex] }}
+              style={styles.headerImage}
+              resizeMode={FastImage.resizeMode.cover}
+            />
+            {headerImages.length > 1 && (
+              <>
+                <TouchableOpacity 
+                  style={[styles.headerNavButton, styles.headerNavButtonLeft]}
+                  onPress={handlePrevImage}
+                >
+                  <Ionicons name="chevron-back" size={30} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.headerNavButton, styles.headerNavButtonRight]}
+                  onPress={handleNextImage}
+                >
+                  <Ionicons name="chevron-forward" size={30} color="#fff" />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         ) : (
           <View style={styles.headerPlaceholder}>
             <Ionicons name="image" size={40} color="#fff" />
             <Text style={styles.headerPlaceholderText}>Add Header Image</Text>
           </View>
         )}
-        <View style={styles.profileImageContainer}>
-          {profileImage ? (
-            <FastImage 
-              source={{ uri: profileImage }}
-              style={styles.profileImage}
-              resizeMode={FastImage.resizeMode.cover}
-            />
-          ) : (
-            <View style={[styles.profileImage, styles.profileImagePlaceholder]}>
-              <Ionicons name="person" size={40} color="#fff" />
-            </View>
-          )}
-        </View>
-        <View style={styles.imageUploadButtons}>
-          <TouchableOpacity 
-            style={styles.imageUploadButton}
-            onPress={() => {
-              // Trigger header image upload
-              const uploader = document.createElement('input');
-              uploader.type = 'file';
-              uploader.accept = 'image/*';
-              uploader.click();
-            }}
-          >
-            <Ionicons name="camera" size={24} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.imageUploadButton, { marginLeft: 10 }]}
-            onPress={() => {
-              // Trigger profile image upload
-              const uploader = document.createElement('input');
-              uploader.type = 'file';
-              uploader.accept = 'image/*';
-              uploader.click();
-            }}
-          >
-            <Ionicons name="camera" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <View style={styles.contentContainer}>
@@ -393,19 +389,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-  },
   headerContainer: {
+    height: HEADER_HEIGHT,
+    position: 'relative',
+  },
+  headerImageWrapper: {
+    width: '100%',
     height: HEADER_HEIGHT,
     position: 'relative',
   },
   headerImage: {
     width: '100%',
-    height: HEADER_HEIGHT,
+    height: '100%',
   },
   headerPlaceholder: {
     width: '100%',
@@ -419,16 +414,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 8,
   },
-  profileImageContainer: {
+  headerNavButton: {
     position: 'absolute',
-    bottom: -PROFILE_IMAGE_SIZE / 2,
-    left: (width - PROFILE_IMAGE_SIZE) / 2,
-    width: PROFILE_IMAGE_SIZE,
-    height: PROFILE_IMAGE_SIZE,
-    borderRadius: PROFILE_IMAGE_SIZE / 2,
-    backgroundColor: '#fff',
-    borderWidth: 4,
-    borderColor: '#fff',
+    top: '50%',
+    transform: [{ translateY: -25 }],
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -436,34 +433,14 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    elevation: 5,
-    overflow: 'hidden',
   },
-  profileImage: {
-    width: '100%',
-    height: '100%',
+  headerNavButtonLeft: {
+    left: 15,
   },
-  profileImagePlaceholder: {
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imageUploadButtons: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    flexDirection: 'row',
-  },
-  imageUploadButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerNavButtonRight: {
+    right: 15,
   },
   contentContainer: {
-    marginTop: PROFILE_IMAGE_SIZE / 2,
     padding: 16,
   },
   inputGroup: {
@@ -515,5 +492,16 @@ const styles = StyleSheet.create({
     color: '#ff3b30',
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  headerImageContainer: {
+    width: '100%',
+    height: 300,
+    position: 'relative',
   },
 });

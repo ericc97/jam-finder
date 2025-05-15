@@ -10,6 +10,7 @@ import LoginScreen from './src/screens/Auth/LoginScreen';
 import RoleSelectScreen from './src/screens/Auth/RoleSelectScreen';
 import SignupScreen from './src/screens/Auth/SignupScreen';
 import ChatScreen from './src/screens/ChatScreen';
+import ViewProfileScreen from './src/screens/ViewProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -39,6 +40,15 @@ function App() {
                   name="Chat"
                   component={ChatScreen}
                   options={{ headerShown: true, title: 'Chat' }}
+                />
+                <Stack.Screen
+                  name="ViewProfileScreen"
+                  component={ViewProfileScreen}
+                  options={({ navigation }) => ({ 
+                    headerShown: true, 
+                    title: 'Profile',
+                    headerBackTitle: 'Matches'
+                  })}
                 />
               </>
             ) : (

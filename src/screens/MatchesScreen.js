@@ -104,36 +104,6 @@ export default function MatchesScreen({ navigation }) {
             onPress={() => goToChat(item)}
             style={styles.matchCard}
           >
-            <View style={styles.profileSection}>
-              {item.profile?.profileImage ? (
-                <FastImage 
-                  source={{ 
-                    uri: item.profile.profileImage,
-                    priority: FastImage.priority.high,
-                  }} 
-                  style={styles.profileImage}
-                />
-              ) : (
-                <View style={[styles.profileImage, styles.placeholderImage]}>
-                  <Text style={styles.placeholderText}>No Photo</Text>
-                </View>
-              )}
-              <View style={styles.profileInfo}>
-                <Text style={styles.name}>{item.profile?.name || 'Unknown User'}</Text>
-                <Text style={styles.genre}>{item.profile?.genre || 'No Genre'}</Text>
-                <View style={styles.roleContainer}>
-                  <Ionicons 
-                    name={item.profile?.role === 'artist' ? 'musical-notes' : 'business'} 
-                    size={16} 
-                    color="#00adf5" 
-                  />
-                  <Text style={styles.role}>
-                    {item.profile?.role === 'artist' ? 'Artist' : 'Venue'}
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-forward" size={24} color="#ccc" />
-            </View>
             {item.profile?.headerImages?.[0] && (
               <FastImage 
                 source={{ 
@@ -143,6 +113,28 @@ export default function MatchesScreen({ navigation }) {
                 style={styles.headerImage}
               />
             )}
+            <View style={styles.profileInfo}>
+              <Text style={styles.name}>{item.profile?.name || 'Unknown User'}</Text>
+              <Text style={styles.genre}>{item.profile?.genre || 'No Genre'}</Text>
+              <View style={styles.roleContainer}>
+                <Ionicons 
+                  name={item.profile?.role === 'artist' ? 'musical-notes' : 'business'} 
+                  size={16} 
+                  color="#00adf5" 
+                />
+                <Text style={styles.role}>
+                  {item.profile?.role === 'artist' ? 'Artist' : 'Venue'}
+                </Text>
+              </View>
+              <TouchableOpacity 
+                style={styles.viewProfileButton}
+                onPress={() => navigation.navigate('ViewProfileScreen', { 
+                  profile: item.profile
+                })}
+              >
+                <Text style={styles.viewProfileButtonText}>View Profile</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         )}
       />
@@ -214,27 +206,12 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  profileSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  profileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: '#00adf5',
-  },
-  placeholderImage: {
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderColor: '#ccc',
+  headerImage: {
+    width: '100%',
+    height: 120,
   },
   profileInfo: {
-    flex: 1,
+    padding: 16,
   },
   name: {
     fontSize: 18,
@@ -256,12 +233,16 @@ const styles = StyleSheet.create({
     color: '#00adf5',
     marginLeft: 4,
   },
-  headerImage: {
-    width: '100%',
-    height: 120,
+  viewProfileButton: {
+    backgroundColor: '#00adf5',
+    borderRadius: 8,
+    padding: 8,
+    alignItems: 'center',
+    marginTop: 12,
   },
-  placeholderText: {
-    color: '#666',
+  viewProfileButtonText: {
+    color: '#fff',
     fontSize: 14,
+    fontWeight: '600',
   },
 });
