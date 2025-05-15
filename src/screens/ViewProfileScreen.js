@@ -6,9 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  Alert,
+  Platform,
+  Linking,
+  Clipboard,
 } from 'react-native';
 import FastImage from 'react-native-fast-image';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 
 const { width } = Dimensions.get('window');
 const HEADER_HEIGHT = 300;
@@ -16,6 +21,159 @@ const HEADER_HEIGHT = 300;
 export default function ViewProfileScreen({ route, navigation }) {
   const { profile } = route.params;
   const [currentHeaderIndex, setCurrentHeaderIndex] = React.useState(0);
+  const [sound, setSound] = React.useState(null);
+  const [isPlaying, setIsPlaying] = React.useState(false);
+
+  React.useEffect(() => {
+    return sound
+      ? () => {
+          sound.unloadAsync();
+        }
+      : undefined;
+  }, [sound]);
+
+  const playDemoSong = async () => {
+    if (!profile.audioUrl) {
+      Alert.alert('No Demo', 'This artist has not uploaded a demo song yet.');
+      return;
+    }
+
+    try {
+      console.log('Attempting to play audio from URL:', profile.audioUrl);
+      
+      if (sound) {
+        if (isPlaying) {
+          await sound.pauseAsync();
+          setIsPlaying(false);
+        } else {
+          await sound.playAsync();
+          setIsPlaying(true);
+        }
+      } else {
+        console.log('Creating new sound object...');
+        // Configure audio mode for better compatibility
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
+        // Check if we're running in simulator
+        const isSimulator = Platform.OS === 'ios' && !Platform.isPad && !Platform.isTV;
+        
+        if (isSimulator) {
+          Alert.alert(
+            'Simulator Detected',
+            'Audio playback in the iOS simulator may not work properly. Would you like to:',
+            [
+              {
+                text: 'Try Anyway',
+                onPress: async () => {
+                  try {
+                    const { sound: newSound } = await Audio.Sound.createAsync(
+                      { uri: profile.audioUrl },
+                      { 
+                        shouldPlay: true,
+                        progressUpdateIntervalMillis: 1000,
+                        positionMillis: 0,
+                        volume: 1.0,
+                        rate: 1.0,
+                        shouldCorrectPitch: true,
+                      }
+                    );
+                    setSound(newSound);
+                    setIsPlaying(true);
+                  } catch (error) {
+                    console.error('Simulator playback failed:', error);
+                    Alert.alert(
+                      'Playback Failed',
+                      'This is a known issue with the iOS simulator. The audio works on real devices and in browsers.',
+                      [
+                        {
+                          text: 'Open in Browser',
+                          onPress: () => Linking.openURL(profile.audioUrl)
+                        },
+                        {
+                          text: 'Copy URL',
+                          onPress: () => {
+                            Clipboard.setString(profile.audioUrl);
+                            Alert.alert('Copied', 'Audio URL copied to clipboard');
+                          }
+                        },
+                        {
+                          text: 'OK',
+                          style: 'cancel'
+                        }
+                      ]
+                    );
+                  }
+                }
+              },
+              {
+                text: 'Open in Browser',
+                onPress: () => Linking.openURL(profile.audioUrl)
+              },
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              }
+            ]
+          );
+          return;
+        }
+
+        // For real devices, proceed normally
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: profile.audioUrl },
+          { 
+            shouldPlay: true,
+            progressUpdateIntervalMillis: 1000,
+            positionMillis: 0,
+            volume: 1.0,
+            rate: 1.0,
+            shouldCorrectPitch: true,
+          }
+        );
+        console.log('Sound object created successfully');
+        setSound(newSound);
+        setIsPlaying(true);
+
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          console.log('Playback status:', status);
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error playing demo song:', error);
+      console.error('Audio URL:', profile.audioUrl);
+      Alert.alert(
+        'Playback Error',
+        `Failed to play demo song.\n\nURL: ${profile.audioUrl}\n\nError: ${error.message}`,
+        [
+          {
+            text: 'Open in Browser',
+            onPress: () => {
+              Linking.openURL(profile.audioUrl);
+            }
+          },
+          {
+            text: 'Copy URL',
+            onPress: () => {
+              Clipboard.setString(profile.audioUrl);
+              Alert.alert('Copied', 'Audio URL copied to clipboard');
+            }
+          },
+          {
+            text: 'OK',
+            style: 'cancel'
+          }
+        ]
+      );
+    }
+  };
 
   const handleNextImage = () => {
     if (profile.headerImages?.length > 0) {
@@ -74,17 +232,33 @@ export default function ViewProfileScreen({ route, navigation }) {
           <Text style={styles.role}>{profile.role === 'artist' ? 'Artist' : 'Venue'}</Text>
         </View>
 
+        {profile.role === 'artist' && (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Genre</Text>
+              <Text style={styles.genre}>{profile.genre || 'No genre specified'}</Text>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.demoButton}
+              onPress={playDemoSong}
+            >
+              <Ionicons 
+                name={isPlaying ? "pause-circle" : "play-circle"} 
+                size={24} 
+                color="#00adf5" 
+              />
+              <Text style={styles.demoButtonText}>
+                {isPlaying ? "Pause Demo" : "Play Demo"}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Bio</Text>
           <Text style={styles.bio}>{profile.bio || 'No bio added yet'}</Text>
         </View>
-
-        {profile.role === 'artist' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Genre</Text>
-            <Text style={styles.genre}>{profile.genre || 'No genre specified'}</Text>
-          </View>
-        )}
 
         {profile.role === 'venue' && (
           <>
@@ -247,5 +421,18 @@ const styles = StyleSheet.create({
     color: '#666',
     fontStyle: 'italic',
     marginTop: 8,
+  },
+  demoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    padding: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+  },
+  demoButtonText: {
+    fontSize: 16,
+    color: '#00adf5',
+    marginLeft: 8,
   },
 }); 

@@ -12,6 +12,8 @@ import {
     StyleSheet,
     Dimensions,
     TouchableOpacity,
+    Platform,
+    Linking,
 } from 'react-native';
 import AudioUploader from '../components/AudioUploader';
 import ImageUploader from '../components/ImageUploader';
@@ -19,6 +21,7 @@ import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import FastImage from 'react-native-fast-image';
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 
 const { width } = Dimensions.get('window');
 const HEADER_HEIGHT = 200;
@@ -36,6 +39,11 @@ export default function ArtistProfileScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [uid, setUid] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [bioHeight, setBioHeight] = useState(40);
+  const [spotifyUrl, setSpotifyUrl] = useState('');
+  const [instagramUrl, setInstagramUrl] = useState('');
+  const [sound, setSound] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const MAX_RETRIES = 3;
 
   useEffect(() => {
@@ -76,6 +84,8 @@ export default function ArtistProfileScreen() {
           setProfileImage(data.profileImage || '');
           setHeaderImages(data.headerImages || []);
           setAudioUrl(data.audioUrl || '');
+          setSpotifyUrl(data.spotifyUrl || '');
+          setInstagramUrl(data.instagramUrl || '');
           
           console.log('Profile state updated with values:', {
             name: data.name,
@@ -83,7 +93,9 @@ export default function ArtistProfileScreen() {
             genre: data.genre,
             profileImage: data.profileImage,
             headerImagesCount: data.headerImages?.length,
-            hasAudioUrl: !!data.audioUrl
+            hasAudioUrl: !!data.audioUrl,
+            spotifyUrl: data.spotifyUrl,
+            instagramUrl: data.instagramUrl
           });
         } else {
           console.log('No profile found, creating new profile...');
@@ -150,6 +162,8 @@ export default function ArtistProfileScreen() {
         profileImage,
         headerImages,
         audioUrl: audioUrl || '', // Ensure audioUrl is never undefined
+        spotifyUrl: spotifyUrl.trim(),
+        instagramUrl: instagramUrl.trim(),
         publicId,
         role: 'artist',
         profileUpdatedAt: firestore.FieldValue.serverTimestamp(),
@@ -263,6 +277,149 @@ export default function ArtistProfileScreen() {
     }
   };
 
+  const playDemoSong = async () => {
+    if (!audioUrl) {
+      Alert.alert('No Demo', 'Please upload a demo song first.');
+      return;
+    }
+
+    try {
+      console.log('Attempting to play audio from URL:', audioUrl);
+      
+      if (sound) {
+        if (isPlaying) {
+          await sound.pauseAsync();
+          setIsPlaying(false);
+        } else {
+          await sound.playAsync();
+          setIsPlaying(true);
+        }
+      } else {
+        console.log('Creating new sound object...');
+        // Configure audio mode for better compatibility
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+
+        // Check if we're running in simulator
+        const isSimulator = Platform.OS === 'ios' && !Platform.isPad && !Platform.isTV;
+        
+        if (isSimulator) {
+          Alert.alert(
+            'Simulator Detected',
+            'Audio playback in the iOS simulator may not work properly. Would you like to:',
+            [
+              {
+                text: 'Try Anyway',
+                onPress: async () => {
+                  try {
+                    const { sound: newSound } = await Audio.Sound.createAsync(
+                      { uri: audioUrl },
+                      { 
+                        shouldPlay: true,
+                        progressUpdateIntervalMillis: 1000,
+                        positionMillis: 0,
+                        volume: 1.0,
+                        rate: 1.0,
+                        shouldCorrectPitch: true,
+                      }
+                    );
+                    setSound(newSound);
+                    setIsPlaying(true);
+                  } catch (error) {
+                    console.error('Simulator playback failed:', error);
+                    Alert.alert(
+                      'Playback Failed',
+                      'This is a known issue with the iOS simulator. The audio works on real devices and in browsers.',
+                      [
+                        {
+                          text: 'Open in Browser',
+                          onPress: () => Linking.openURL(audioUrl)
+                        },
+                        {
+                          text: 'Copy URL',
+                          onPress: () => {
+                            Clipboard.setString(audioUrl);
+                            Alert.alert('Copied', 'Audio URL copied to clipboard');
+                          }
+                        },
+                        {
+                          text: 'OK',
+                          style: 'cancel'
+                        }
+                      ]
+                    );
+                  }
+                }
+              },
+              {
+                text: 'Open in Browser',
+                onPress: () => Linking.openURL(audioUrl)
+              },
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              }
+            ]
+          );
+          return;
+        }
+
+        // For real devices, proceed normally
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: audioUrl },
+          { 
+            shouldPlay: true,
+            progressUpdateIntervalMillis: 1000,
+            positionMillis: 0,
+            volume: 1.0,
+            rate: 1.0,
+            shouldCorrectPitch: true,
+          }
+        );
+        console.log('Sound object created successfully');
+        setSound(newSound);
+        setIsPlaying(true);
+
+        newSound.setOnPlaybackStatusUpdate((status) => {
+          console.log('Playback status:', status);
+          if (status.didJustFinish) {
+            setIsPlaying(false);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error playing demo song:', error);
+      console.error('Audio URL:', audioUrl);
+      Alert.alert(
+        'Playback Error',
+        `Failed to play demo song.\n\nURL: ${audioUrl}\n\nError: ${error.message}`,
+        [
+          {
+            text: 'Open in Browser',
+            onPress: () => {
+              Linking.openURL(audioUrl);
+            }
+          },
+          {
+            text: 'Copy URL',
+            onPress: () => {
+              Clipboard.setString(audioUrl);
+              Alert.alert('Copied', 'Audio URL copied to clipboard');
+            }
+          },
+          {
+            text: 'OK',
+            style: 'cancel'
+          }
+        ]
+      );
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -335,15 +492,67 @@ export default function ArtistProfileScreen() {
             value={bio} 
             onChangeText={setBio} 
             multiline 
-            style={[styles.input, styles.bioInput]}
+            style={[styles.input, { height: Math.max(40, bioHeight) }]}
             placeholder="Tell us about yourself"
             editable={!isSaving}
+            onContentSizeChange={(event) => {
+              setBioHeight(event.nativeEvent.contentSize.height);
+            }}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Spotify URL</Text>
+          <TextInput 
+            value={spotifyUrl} 
+            onChangeText={setSpotifyUrl} 
+            style={styles.input}
+            placeholder="https://open.spotify.com/artist/..."
+            editable={!isSaving}
+            autoCapitalize="none"
+            keyboardType="url"
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Instagram URL</Text>
+          <TextInput 
+            value={instagramUrl} 
+            onChangeText={setInstagramUrl} 
+            style={styles.input}
+            placeholder="https://instagram.com/..."
+            editable={!isSaving}
+            autoCapitalize="none"
+            keyboardType="url"
           />
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Demo Track</Text>
-          <AudioUploader onUploaded={setAudioUrl} disabled={isSaving} />
+          <AudioUploader 
+            onUploaded={setAudioUrl} 
+            disabled={isSaving} 
+            existingAudioUrl={audioUrl}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Demo Song</Text>
+          {audioUrl && (
+            <TouchableOpacity 
+              style={styles.playButton} 
+              onPress={playDemoSong}
+            >
+              <Ionicons 
+                name={isPlaying ? "pause" : "play"} 
+                size={24} 
+                color="white" 
+              />
+              <Text style={styles.playButtonText}>
+                {isPlaying ? "Pause Demo" : "Play Demo"}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <TouchableOpacity 
@@ -503,5 +712,20 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 300,
     position: 'relative',
+  },
+  playButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007AFF',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  playButtonText: {
+    color: 'white',
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

@@ -181,6 +181,7 @@ export default function SwipeScreen() {
           containerStyle={styles.swiperContainerStyle}
           cardIndex={0}
           animateOverlayLabelsOpacity
+          marginBottom={100}
           overlayLabels={{
             left: {
               title: 'SKIP',
