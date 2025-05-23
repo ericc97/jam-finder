@@ -1,7 +1,7 @@
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useState, useEffect } from 'react';
-import { Alert, Button, Text, View, ActivityIndicator, TouchableOpacity, StyleSheet, TextInput } from 'react-native';
+import { Alert, Button, Text, View, ActivityIndicator, TouchableOpacity, StyleSheet, TextInput, Linking } from 'react-native';
 import storage from '@react-native-firebase/storage';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
@@ -332,6 +332,12 @@ export default function AudioUploader({ onUploaded, disabled, existingAudioUrl }
             [
               { text: 'Cancel', style: 'cancel' },
               { 
+                text: 'Play in Browser', 
+                onPress: () => {
+                  Linking.openURL(audioUrl);
+                }
+              },
+              { 
                 text: 'Retry', 
                 onPress: () => {
                   setSound(null);
@@ -377,6 +383,12 @@ export default function AudioUploader({ onUploaded, disabled, existingAudioUrl }
                 'Failed to load audio. Would you like to try again?',
                 [
                   { text: 'Cancel', style: 'cancel' },
+                  { 
+                    text: 'Play in Browser', 
+                    onPress: () => {
+                      Linking.openURL(audioUrl);
+                    }
+                  },
                   { 
                     text: 'Retry', 
                     onPress: () => {

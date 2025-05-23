@@ -238,20 +238,6 @@ export default function ViewProfileScreen({ route, navigation }) {
               <Text style={styles.sectionTitle}>Genre</Text>
               <Text style={styles.genre}>{profile.genre || 'No genre specified'}</Text>
             </View>
-
-            <TouchableOpacity 
-              style={styles.demoButton}
-              onPress={playDemoSong}
-            >
-              <Ionicons 
-                name={isPlaying ? "pause-circle" : "play-circle"} 
-                size={24} 
-                color="#00adf5" 
-              />
-              <Text style={styles.demoButtonText}>
-                {isPlaying ? "Pause Demo" : "Play Demo"}
-              </Text>
-            </TouchableOpacity>
           </>
         )}
 

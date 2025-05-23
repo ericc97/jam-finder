@@ -246,22 +246,6 @@ export default function SwipeCard({ user }) {
         </View>
       )}
 
-      {user.role === 'artist' && (
-        <TouchableOpacity 
-          style={styles.demoButton}
-          onPress={playDemoSong}
-        >
-          <Ionicons 
-            name={isPlaying ? "pause-circle" : "play-circle"} 
-            size={24} 
-            color="#00adf5" 
-          />
-          <Text style={styles.demoButtonText}>
-            {isPlaying ? "Pause Demo" : "Play Demo"}
-          </Text>
-        </TouchableOpacity>
-      )}
-
       <View style={styles.bioContainer}>
         <Text style={styles.bio} numberOfLines={3}>{user?.bio || 'No Bio'}</Text>
       </View>

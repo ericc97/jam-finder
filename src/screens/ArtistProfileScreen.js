@@ -536,25 +536,6 @@ export default function ArtistProfileScreen() {
           />
         </View>
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Demo Song</Text>
-          {audioUrl && (
-            <TouchableOpacity 
-              style={styles.playButton} 
-              onPress={playDemoSong}
-            >
-              <Ionicons 
-                name={isPlaying ? "pause" : "play"} 
-                size={24} 
-                color="white" 
-              />
-              <Text style={styles.playButtonText}>
-                {isPlaying ? "Pause Demo" : "Play Demo"}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
         <TouchableOpacity 
           style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
           onPress={saveProfile}
