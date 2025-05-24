@@ -183,6 +183,23 @@ export default function VenueProfileScreen() {
     }
   };
 
+  const sharePublicProfile = async () => {
+    const publicId = uid.slice(0, 8);
+    const url = `https://jamfinder.app/public/venue/${publicId}`;
+
+    try {
+      await Clipboard.setStringAsync(url);
+      Alert.alert('Copied!', 'Public profile link copied to clipboard.');
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(url);
+      }
+    } catch (error) {
+      console.error('Error sharing profile:', error);
+      Alert.alert('Error', 'Failed to share profile');
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -402,6 +419,15 @@ export default function VenueProfileScreen() {
             title="Delete My Account"
             onPress={deleteMyAccount}
             color="red"
+            disabled={isSaving}
+          />
+        </View>
+
+        <View style={{ marginVertical: 10 }}>
+          <Button
+            title="Share Public Profile"
+            onPress={sharePublicProfile}
+            color="blue"
             disabled={isSaving}
           />
         </View>

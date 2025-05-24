@@ -3,7 +3,7 @@ import { Audio } from 'expo-av';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { Alert, Image, ScrollView, Text } from 'react-native';
-import { db } from '../firebase';
+import firestore from '@react-native-firebase/firestore';
 
 export default function PublicProfileScreen() {
   const route = useRoute();
@@ -16,7 +16,7 @@ export default function PublicProfileScreen() {
     const fetchProfile = async () => {
       try {
         console.log('Fetching profile for publicId:', publicId);
-        const q = query(collection(db, 'users'), where('publicId', '==', publicId));
+        const q = query(collection(firestore(), 'users'), where('publicId', '==', publicId));
         const snapshot = await getDocs(q);
   
         if (snapshot.empty) {

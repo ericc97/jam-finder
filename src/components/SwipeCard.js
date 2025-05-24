@@ -21,6 +21,10 @@ export default function SwipeCard({ user }) {
       : undefined;
   }, [sound]);
 
+  if (!user) {
+    return null;
+  }
+
   const playDemoSong = async () => {
     if (!user.audioUrl) {
       Alert.alert('No Demo', 'This artist has not uploaded a demo song yet.');
@@ -246,6 +250,22 @@ export default function SwipeCard({ user }) {
         </View>
       )}
 
+      {user.role === 'artist' && user.audioUrl && (
+        <TouchableOpacity 
+          style={styles.demoButton}
+          onPress={playDemoSong}
+        >
+          <Ionicons 
+            name={isPlaying ? "pause-circle" : "play-circle"} 
+            size={20} 
+            color="#00adf5" 
+          />
+          <Text style={styles.demoButtonText}>
+            {isPlaying ? 'Pause Demo' : 'Play Demo'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       <View style={styles.bioContainer}>
         <Text style={styles.bio} numberOfLines={3}>{user?.bio || 'No Bio'}</Text>
       </View>
@@ -302,9 +322,6 @@ const styles = StyleSheet.create({
     padding: 12,
     elevation: 5,
     margin: 8,
-    marginLeft: 20,
-    marginTop: 13,
-    marginBottom: 60,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -313,11 +330,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     width: width * 0.9,
-    height: 500,
-    alignSelf: 'flex-start',
+    height: 475,
+    alignSelf: 'center',
   },
   image: {
-    height: 200,
+    height: 190,
     width: '100%',
     borderRadius: 12,
     marginBottom: 12,

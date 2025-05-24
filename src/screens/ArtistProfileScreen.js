@@ -211,11 +211,16 @@ export default function ArtistProfileScreen() {
     const publicId = uid.slice(0, 8);
     const url = `https://jamfinder.app/public/artist/${publicId}`;
 
-    await Clipboard.setStringAsync(url);
-    Alert.alert('Copied!', 'Public profile link copied to clipboard.');
+    try {
+      await Clipboard.setStringAsync(url);
+      Alert.alert('Copied!', 'Public profile link copied to clipboard.');
 
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(url);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(url);
+      }
+    } catch (error) {
+      console.error('Error sharing profile:', error);
+      Alert.alert('Error', 'Failed to share profile');
     }
   };
 

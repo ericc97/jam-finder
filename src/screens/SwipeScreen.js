@@ -102,14 +102,25 @@ export default function SwipeScreen() {
         });
 
         // Remove the matched user from the cards array
-        setCards(prevCards => prevCards.filter(card => card.id !== swipedUser.id));
-        
-        // Check if this was the last card
-        if (cards.length === 1) {
-          setAllCardsSwiped(true);
-        }
+        setCards(prevCards => {
+          const newCards = prevCards.filter(card => card.id !== swipedUser.id);
+          // Check if this was the last card after removal
+          if (newCards.length === 0) {
+            setAllCardsSwiped(true);
+          }
+          return newCards;
+        });
 
         Alert.alert("🎉 It's a match!", `You and ${swipedUser.name} can now chat.`);
+      } else {
+        // If not a match, still remove the card and check if it was the last one
+        setCards(prevCards => {
+          const newCards = prevCards.filter(card => card.id !== swipedUser.id);
+          if (newCards.length === 0) {
+            setAllCardsSwiped(true);
+          }
+          return newCards;
+        });
       }
     } catch (error) {
       console.error('Error handling swipe right:', error);
@@ -118,10 +129,14 @@ export default function SwipeScreen() {
   };
 
   const handleSwipeLeft = (cardIndex) => {
-    // Check if this was the last card
-    if (cards.length === 1) {
-      setAllCardsSwiped(true);
-    }
+    // Remove the card and check if it was the last one
+    setCards(prevCards => {
+      const newCards = prevCards.filter((_, index) => index !== cardIndex);
+      if (newCards.length === 0) {
+        setAllCardsSwiped(true);
+      }
+      return newCards;
+    });
   };
 
   if (isLoading) {
@@ -140,19 +155,33 @@ export default function SwipeScreen() {
 
   // Show empty state if no cards or all cards have been swiped
   if (!cards || cards.length === 0 || allCardsSwiped) {
-    console.log('Showing empty state');
+    console.log('Showing empty state with:', { 
+      cards: cards?.length, 
+      allCardsSwiped,
+      currentUserRole 
+    });
     const message = currentUserRole === 'artist' ? 'No venues to show' : 'No artists to show';
     return (
-      <SafeAreaView style={styles.emptyContainer}>
-        <View style={styles.emptyContent}>
-          <Ionicons name="musical-notes" size={80} color="#00adf5" />
-          <Text style={styles.emptyText}>{message}</Text>
-          <Text style={styles.emptySubtext}>We've shown you all available profiles for now.</Text>
-          <Text style={styles.emptySubtext}>Check back later for new matches!</Text>
-          <View style={styles.emptyDivider} />
-          <Text style={styles.emptyTip}>
-            Tip: Complete your profile to increase your chances of finding matches
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>
+            {currentUserRole === 'artist' ? 'Find Venues' : 'Find Artists'}
           </Text>
+          <Text style={styles.headerSubtitle}>
+            Swipe right to favorite, left to skip
+          </Text>
+        </View>
+        <View style={styles.swiperContainer}>
+          <View style={styles.emptyContent}>
+            <Ionicons name="musical-notes" size={80} color="#00adf5" />
+            <Text style={styles.emptyText}>{message}</Text>
+            <Text style={styles.emptySubtext}>We've shown you all available profiles for now.</Text>
+            <Text style={styles.emptySubtext}>Check back later for new matches!</Text>
+            <View style={styles.emptyDivider} />
+            <Text style={styles.emptyTip}>
+              Tip: Complete your profile to increase your chances of finding matches
+            </Text>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -175,6 +204,10 @@ export default function SwipeScreen() {
           renderCard={(card) => <SwipeCard user={card} />}
           onSwipedRight={handleSwipeRight}
           onSwipedLeft={handleSwipeLeft}
+          onSwipedAll={() => {
+            console.log('All cards swiped');
+            setAllCardsSwiped(true);
+          }}
           stackSize={3}
           backgroundColor="transparent"
           cardStyle={styles.swiperCard}

@@ -11,8 +11,25 @@ import RoleSelectScreen from './src/screens/Auth/RoleSelectScreen';
 import SignupScreen from './src/screens/Auth/SignupScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import ViewProfileScreen from './src/screens/ViewProfileScreen';
+import PublicProfileScreen from './src/screens/PublicProfileScreen';
 
 const Stack = createNativeStackNavigator();
+
+// Deep linking configuration
+const linking = {
+  prefixes: ['https://jamfinder.app', 'jamfinder://'],
+  config: {
+    screens: {
+      PublicProfile: {
+        path: 'public/:role/:publicId',
+        parse: {
+          publicId: (publicId) => publicId,
+          role: (role) => role,
+        },
+      },
+    },
+  },
+};
 
 function App() {
   const [user, setUser] = useState(null);
@@ -26,7 +43,7 @@ function App() {
     <SafeAreaProvider>
       <StatusBar style="auto" />
       <SafeAreaView style={{ flex: 1 }}>
-        <NavigationContainer>
+        <NavigationContainer linking={linking}>
           <Stack.Navigator 
             screenOptions={{ 
               headerShown: false,
@@ -50,12 +67,22 @@ function App() {
                     headerBackTitle: 'Matches'
                   })}
                 />
+                <Stack.Screen
+                  name="PublicProfile"
+                  component={PublicProfileScreen}
+                  options={{ headerShown: true, title: 'Profile' }}
+                />
               </>
             ) : (
               <>
                 <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
                 <Stack.Screen name="Signup" component={SignupScreen} />
                 <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen
+                  name="PublicProfile"
+                  component={PublicProfileScreen}
+                  options={{ headerShown: true, title: 'Profile' }}
+                />
               </>
             )}
           </Stack.Navigator>
