@@ -1,10 +1,10 @@
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import { Alert, Button, Image, View } from 'react-native';
 import storage from '@react-native-firebase/storage';
 import auth from '@react-native-firebase/auth';
 
-export default function ImageUploader({ onUploaded, disabled }) {
+const ImageUploader = forwardRef(({ onUploaded, disabled, hideButton }, ref) => {
   const [imageUri, setImageUri] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -96,7 +96,7 @@ export default function ImageUploader({ onUploaded, disabled }) {
         });
         
         const uniqueId = generateUniqueId();
-        const reference = storage().ref(`profile_images/${currentUser.uid}/${uniqueId}`);
+        const reference = storage().ref(`header_images/${currentUser.uid}/${uniqueId}`);
         
         console.log('Upload path:', reference.fullPath);
         
@@ -151,6 +151,10 @@ export default function ImageUploader({ onUploaded, disabled }) {
     }
   };
 
+  useImperativeHandle(ref, () => ({
+    pickImage
+  }));
+
   return (
     <View>
       {imageUri && (
@@ -159,11 +163,15 @@ export default function ImageUploader({ onUploaded, disabled }) {
           style={{ width: 100, height: 100, borderRadius: 50, marginBottom: 10 }} 
         />
       )}
-      <Button 
-        title={isUploading ? "Uploading..." : "Upload Image"} 
-        onPress={pickImage}
-        disabled={disabled || isUploading}
-      />
+      {!hideButton && (
+        <Button 
+          title={isUploading ? "Uploading..." : "Upload Image"} 
+          onPress={pickImage}
+          disabled={disabled || isUploading}
+        />
+      )}
     </View>
   );
-}
+});
+
+export default ImageUploader;

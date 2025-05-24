@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Alert, TouchableOpacity, Dimensions, Linking, Clipboard, Platform } from 'react-native';
+import { StyleSheet, Text, View, Alert, TouchableOpacity, Dimensions, Linking, Clipboard, Platform, Image } from 'react-native';
 import auth from '@react-native-firebase/auth';
 import firestore from '@react-native-firebase/firestore';
 import FastImage from 'react-native-fast-image';
@@ -12,6 +12,8 @@ export default function SwipeCard({ user }) {
   const [sound, setSound] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [currentHeaderIndex, setCurrentHeaderIndex] = useState(0);
+  const [isBioExpanded, setIsBioExpanded] = useState(false);
 
   useEffect(() => {
     return sound
@@ -24,6 +26,28 @@ export default function SwipeCard({ user }) {
   if (!user) {
     return null;
   }
+
+  const handleCardPress = () => {
+    if (isBioExpanded) {
+      setIsBioExpanded(false);
+    }
+  };
+
+  const handleNextImage = () => {
+    if (user.headerImages?.length > 0) {
+      setCurrentHeaderIndex((prevIndex) => 
+        prevIndex === user.headerImages.length - 1 ? 0 : prevIndex + 1
+      );
+    }
+  };
+
+  const handlePrevImage = () => {
+    if (user.headerImages?.length > 0) {
+      setCurrentHeaderIndex((prevIndex) => 
+        prevIndex === 0 ? user.headerImages.length - 1 : prevIndex - 1
+      );
+    }
+  };
 
   const playDemoSong = async () => {
     if (!user.audioUrl) {
@@ -205,34 +229,56 @@ export default function SwipeCard({ user }) {
   };
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card} 
+      onPress={handleCardPress}
+      activeOpacity={1}
+    >
       {user?.headerImages?.[0] ? (
-        <FastImage 
-          source={{ 
-            uri: user.headerImages[0],
-            priority: FastImage.priority.high,
-            cache: FastImage.cacheControl.immutable
-          }} 
-          style={styles.image}
-          resizeMode={FastImage.resizeMode.cover}
-          onError={(error) => {
-            console.error('Error loading header image:', error);
-            console.log('Failed URL:', user.headerImages[0]);
-            console.log('Image dimensions:', {
-              width: width * 0.9,
-              height: 200
-            });
-            setImageError(true);
-          }}
-          onLoad={(event) => {
-            console.log('Header image loaded successfully:', {
-              url: user.headerImages[0],
-              width: event.nativeEvent.width,
-              height: event.nativeEvent.height
-            });
-            setImageError(false);
-          }}
-        />
+        <View style={styles.imageContainer}>
+          <FastImage 
+            source={{ 
+              uri: user.headerImages[currentHeaderIndex],
+              priority: FastImage.priority.high,
+              cache: FastImage.cacheControl.immutable
+            }} 
+            style={styles.image}
+            resizeMode={FastImage.resizeMode.cover}
+            onError={(error) => {
+              console.error('Error loading header image:', error);
+              console.log('Failed URL:', user.headerImages[currentHeaderIndex]);
+              console.log('Image dimensions:', {
+                width: width * 0.9,
+                height: 200
+              });
+              setImageError(true);
+            }}
+            onLoad={(event) => {
+              console.log('Header image loaded successfully:', {
+                url: user.headerImages[currentHeaderIndex],
+                width: event.nativeEvent.width,
+                height: event.nativeEvent.height
+              });
+              setImageError(false);
+            }}
+          />
+          {user.headerImages.length > 1 && (
+            <>
+              <TouchableOpacity 
+                style={[styles.headerNavButton, styles.headerNavButtonLeft]}
+                onPress={handlePrevImage}
+              >
+                <Ionicons name="chevron-back" size={30} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.headerNavButton, styles.headerNavButtonRight]}
+                onPress={handleNextImage}
+              >
+                <Ionicons name="chevron-forward" size={30} color="#fff" />
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
       ) : (
         <View style={[styles.image, styles.placeholderImage]}>
           <Text style={styles.placeholderText}>No Image</Text>
@@ -267,8 +313,46 @@ export default function SwipeCard({ user }) {
       )}
 
       <View style={styles.bioContainer}>
-        <Text style={styles.bio} numberOfLines={3}>{user?.bio || 'No Bio'}</Text>
+        <TouchableOpacity 
+          onPress={() => setIsBioExpanded(!isBioExpanded)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.bio} numberOfLines={isBioExpanded ? undefined : 3}>
+            {user?.bio || 'No Bio'}
+          </Text>
+          {user?.bio && user.bio.length > 150 && (
+            <Text style={styles.expandText}>
+              {isBioExpanded ? 'Show less' : 'Read more'}
+            </Text>
+          )}
+        </TouchableOpacity>
       </View>
+
+      {(user.spotifyUrl || user.instagramUrl) && (
+        <View style={styles.socialLinks}>
+          {user.spotifyUrl && (
+            <TouchableOpacity 
+              style={styles.socialLink}
+              onPress={() => Linking.openURL(user.spotifyUrl)}
+            >
+              <Image 
+                source={require('../../assets/spotify-logo.png')} 
+                style={styles.spotifyLogo}
+              />
+              <Text style={styles.socialLinkText}>Spotify</Text>
+            </TouchableOpacity>
+          )}
+          {user.instagramUrl && (
+            <TouchableOpacity 
+              style={styles.socialLink}
+              onPress={() => Linking.openURL(user.instagramUrl)}
+            >
+              <Ionicons name="logo-instagram" size={20} color="#E1306C" />
+              <Text style={styles.socialLinkText}>Instagram</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
 
       {user.role === 'venue' && (
         <View style={styles.venueInfo}>
@@ -286,32 +370,10 @@ export default function SwipeCard({ user }) {
               </Text>
             </View>
           </View>
-          {(user.spotifyUrl || user.instagramUrl) && (
-            <View style={styles.socialLinks}>
-              {user.spotifyUrl && (
-                <TouchableOpacity 
-                  style={styles.socialLink}
-                  onPress={() => Linking.openURL(user.spotifyUrl)}
-                >
-                  <Ionicons name="logo-spotify" size={20} color="#1DB954" />
-                  <Text style={styles.socialLinkText}>Spotify</Text>
-                </TouchableOpacity>
-              )}
-              {user.instagramUrl && (
-                <TouchableOpacity 
-                  style={styles.socialLink}
-                  onPress={() => Linking.openURL(user.instagramUrl)}
-                >
-                  <Ionicons name="logo-instagram" size={20} color="#E1306C" />
-                  <Text style={styles.socialLinkText}>Instagram</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          )}
           {renderEquipmentInfo()}
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -333,11 +395,16 @@ const styles = StyleSheet.create({
     height: 475,
     alignSelf: 'center',
   },
+  imageContainer: {
+    position: 'relative',
+    height: 190,
+    width: '100%',
+    marginBottom: 12,
+  },
   image: {
     height: 190,
     width: '100%',
     borderRadius: 12,
-    marginBottom: 12,
     backgroundColor: '#f0f0f0',
   },
   placeholderImage: {
@@ -358,12 +425,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     padding: 12,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   bio: {
     fontSize: 15,
     color: '#444',
     lineHeight: 22,
+  },
+  expandText: {
+    fontSize: 14,
+    color: '#00adf5',
+    marginTop: 4,
+    textAlign: 'right',
   },
   venueInfo: {
     padding: 12,
@@ -447,8 +520,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
-    marginTop: 8,
-    gap: 16,
+    marginTop: 0,
+    marginBottom: 12,
+    paddingHorizontal: 4,
+    flexWrap: 'wrap',
+    gap: 8,
   },
   socialLink: {
     flexDirection: 'row',
@@ -464,5 +540,27 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontSize: 14,
     color: '#666',
+  },
+  headerNavButton: {
+    position: 'absolute',
+    top: '50%',
+    transform: [{ translateY: -25 }],
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  headerNavButtonLeft: {
+    left: 15,
+  },
+  headerNavButtonRight: {
+    right: 15,
+  },
+  spotifyLogo: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
   },
 });

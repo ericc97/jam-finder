@@ -101,26 +101,7 @@ export default function SwipeScreen() {
           matchedAt: firestore.FieldValue.serverTimestamp(),
         });
 
-        // Remove the matched user from the cards array
-        setCards(prevCards => {
-          const newCards = prevCards.filter(card => card.id !== swipedUser.id);
-          // Check if this was the last card after removal
-          if (newCards.length === 0) {
-            setAllCardsSwiped(true);
-          }
-          return newCards;
-        });
-
         Alert.alert("🎉 It's a match!", `You and ${swipedUser.name} can now chat.`);
-      } else {
-        // If not a match, still remove the card and check if it was the last one
-        setCards(prevCards => {
-          const newCards = prevCards.filter(card => card.id !== swipedUser.id);
-          if (newCards.length === 0) {
-            setAllCardsSwiped(true);
-          }
-          return newCards;
-        });
       }
     } catch (error) {
       console.error('Error handling swipe right:', error);
@@ -129,14 +110,7 @@ export default function SwipeScreen() {
   };
 
   const handleSwipeLeft = (cardIndex) => {
-    // Remove the card and check if it was the last one
-    setCards(prevCards => {
-      const newCards = prevCards.filter((_, index) => index !== cardIndex);
-      if (newCards.length === 0) {
-        setAllCardsSwiped(true);
-      }
-      return newCards;
-    });
+    // No need to manually remove cards, let Swiper handle it
   };
 
   if (isLoading) {

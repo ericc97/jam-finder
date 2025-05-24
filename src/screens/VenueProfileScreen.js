@@ -45,6 +45,8 @@ export default function VenueProfileScreen() {
     address: false,
     capacity: false
   });
+  const imageUploaderRef = React.useRef();
+  const [showImageUploader, setShowImageUploader] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth().onAuthStateChanged((user) => {
@@ -209,7 +211,41 @@ export default function VenueProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} bounces={false}>
+    <ScrollView 
+      style={styles.container} 
+      bounces={false}
+      contentContainerStyle={styles.scrollContent}
+    >
+      <ImageUploader
+        ref={imageUploaderRef}
+        hideButton={true}
+        onUploaded={(url) => {
+          console.log('Image uploaded, URL:', url);
+          setProfileData(prev => {
+            const newHeaderImages = [...(prev.headerImages || []), url];
+            console.log('New header images array:', newHeaderImages);
+            return {
+              ...prev,
+              headerImages: newHeaderImages
+            };
+          });
+          // Save to Firestore immediately
+          if (uid) {
+            console.log('Saving to Firestore, user ID:', uid);
+            firestore().collection('users').doc(uid).update({
+              headerImages: firestore.FieldValue.arrayUnion(url),
+              updatedAt: firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+              console.log('Successfully saved to Firestore');
+            }).catch(error => {
+              console.error('Error saving image URL:', error);
+              Alert.alert('Error', 'Failed to save image URL to profile');
+            });
+          } else {
+            console.error('No user ID available for saving');
+          }
+        }}
+      />
       <View style={styles.headerContainer}>
         {profileData.headerImages?.[0] ? (
           <View style={styles.headerImageWrapper}>
@@ -234,11 +270,73 @@ export default function VenueProfileScreen() {
                 </TouchableOpacity>
               </>
             )}
+            <TouchableOpacity 
+              style={styles.deleteImageButton}
+              onPress={() => {
+                Alert.alert(
+                  'Delete Image',
+                  'Are you sure you want to delete this image?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          const imageToDelete = profileData.headerImages[currentHeaderIndex];
+                          // Remove from state
+                          setProfileData(prev => {
+                            const newHeaderImages = prev.headerImages.filter((_, index) => index !== currentHeaderIndex);
+                            // Adjust current index if needed
+                            if (currentHeaderIndex >= newHeaderImages.length) {
+                              setCurrentHeaderIndex(Math.max(0, newHeaderImages.length - 1));
+                            }
+                            return {
+                              ...prev,
+                              headerImages: newHeaderImages
+                            };
+                          });
+                          // Remove from Firestore
+                          if (uid) {
+                            await firestore().collection('users').doc(uid).update({
+                              headerImages: firestore.FieldValue.arrayRemove(imageToDelete),
+                              updatedAt: firestore.FieldValue.serverTimestamp()
+                            });
+                          }
+                        } catch (error) {
+                          console.error('Error deleting image:', error);
+                          Alert.alert('Error', 'Failed to delete image');
+                        }
+                      }
+                    }
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="trash" size={24} color="#fff" />
+            </TouchableOpacity>
+            {profileData.headerImages.length < 5 && (
+              <TouchableOpacity 
+                style={styles.addImageButton}
+                onPress={() => {
+                  imageUploaderRef.current?.pickImage();
+                }}
+              >
+                <Ionicons name="add-circle" size={30} color="#fff" />
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           <View style={styles.headerPlaceholder}>
             <Ionicons name="image" size={40} color="#fff" />
-            <Text style={styles.headerPlaceholderText}>Add Header Image</Text>
+            <TouchableOpacity 
+              style={styles.uploadButton}
+              onPress={() => {
+                imageUploaderRef.current?.pickImage();
+              }}
+            >
+              <Text style={styles.uploadButtonText}>Upload Header Image</Text>
+            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -441,9 +539,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   headerContainer: {
     height: HEADER_HEIGHT,
     position: 'relative',
+    backgroundColor: '#fff',
   },
   headerImageWrapper: {
     width: '100%',
@@ -473,7 +575,6 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
@@ -596,5 +697,67 @@ const styles = StyleSheet.create({
   errorInput: {
     borderColor: '#ff3b30',
     borderWidth: 2,
+  },
+  hiddenUploader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    opacity: 0,
+  },
+  addImageButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  imageUploaderOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 20,
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 10,
+  },
+  uploadButtonText: {
+    color: '#00adf5',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteImageButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 59, 48, 0.8)',
+    borderRadius: 20,
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2,
   },
 });
